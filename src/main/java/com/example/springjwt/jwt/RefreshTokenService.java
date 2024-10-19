@@ -50,10 +50,11 @@ public class RefreshTokenService {
         redisTemplate.delete(username);
     }
 
-    //리프레시 토큰 쿠키 생성
+    //토큰 쿠키 생성
     public Cookie createCookie(String key, String value) {
         Cookie cookie = new Cookie(key, value);
         cookie.setMaxAge(7 * 24 * 60 * 60); // 7일을 초 단위로 설정
+        cookie.setPath("/");
         cookie.setHttpOnly(true);
         return cookie;
     }
