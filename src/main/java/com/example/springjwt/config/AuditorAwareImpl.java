@@ -14,7 +14,7 @@ public class AuditorAwareImpl implements AuditorAware<String> {
         // Spring Security의 컨텍스트에서 현재 인증된 사용자 정보를 가져옴
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
-        authentication.getPrincipal()
+        authentication.getPrincipal();
         // 사용자 아이디를 저장할 변수를 초기화
         String userId = "";
 
