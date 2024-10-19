@@ -17,7 +17,7 @@ import org.springframework.stereotype.Component;
 
 @RequiredArgsConstructor
 @Component
-public class CustomAuthenticationSuccessHandler implements AuthenticationSuccessHandler {
+public class CustomFormSuccessHandler implements AuthenticationSuccessHandler {
 
     private final JWTUtil jwtUtil;
     private final RefreshTokenService refreshTokenService;

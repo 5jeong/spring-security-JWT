@@ -1,12 +1,14 @@
-package com.example.springjwt.security.config;
+package com.example.springjwt.config;
 
 import com.example.springjwt.jwt.CustomLogoutFilter;
 import com.example.springjwt.jwt.JWTFilter;
 import com.example.springjwt.jwt.JWTUtil;
 import com.example.springjwt.jwt.LoginFilter;
 import com.example.springjwt.jwt.RefreshTokenService;
+import com.example.springjwt.oauth2.service.CustomOAuth2UserService;
 import com.example.springjwt.security.handler.CustomAuthenticationFailureHandler;
-import com.example.springjwt.security.handler.CustomAuthenticationSuccessHandler;
+import com.example.springjwt.security.handler.CustomFormSuccessHandler;
+import com.example.springjwt.security.handler.CustomOAuth2SuccessHandler;
 import com.example.springjwt.service.CustomUserDetailsService;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.Collections;
@@ -33,10 +35,12 @@ public class SecurityConfig {
 
     // AuthenticationConfiguration: Spring Security에서 인증에 대한 설정을 관리하는 클래스입니다.
     private final AuthenticationConfiguration authenticationConfiguration;
-    private final CustomAuthenticationSuccessHandler successHandler;
+    private final CustomFormSuccessHandler customFormSuccessHandler;
+    private final CustomOAuth2SuccessHandler customOAuth2SuccessHandler;
     private final CustomAuthenticationFailureHandler failureHandler;
     private final CustomUserDetailsService customUserDetailsService;
     private final RefreshTokenService refreshTokenService;
+    private final CustomOAuth2UserService customOAuth2UserService;
 
     // JWTUtil: JWT 토큰의 생성과 검증을 처리하는 유틸리티 클래스입니다. 이 설정 클래스에서 사용됩니다.
     private final JWTUtil jwtUtil;
@@ -100,27 +104,37 @@ public class SecurityConfig {
         http
                 .authorizeHttpRequests((auth) -> auth
                         // 로그인, 메인 페이지, 회원가입 요청은 누구나 접근 가능
-                        .requestMatchers("/login", "/member/**","/auth/reissue").permitAll()
+                        .requestMatchers("/login", "/member/**", "/auth/reissue").permitAll()
                         // /admin 경로는 ADMIN 권한이 있는 사용자만 접근 가능
                         .requestMatchers("/admin").hasRole("ADMIN")
                         // 그 외의 모든 요청은 인증된 사용자만 접근 가능
                         .anyRequest().authenticated());
 
-        // JWTFilter 추가 (JWT 검증 필터). JWT를 사용하여 토큰 검증을 하기 위한 필터를 등록
-        http
-                .addFilterBefore(new JWTFilter(jwtUtil, customUserDetailsService),
-                        LoginFilter.class);
+        // JWT 필터를 UsernamePasswordAuthenticationFilter 뒤에 추가
+        http.addFilterAfter(new JWTFilter(jwtUtil, customUserDetailsService),
+                UsernamePasswordAuthenticationFilter.class);
 
-        // LoginFilter 추가 (로그인 요청 처리 필터). 로그인 요청 시 JWT를 발급하는 필터를 등록
+        // LoginFilter 설정 (폼 로그인 요청 처리)
         LoginFilter loginFilter = new LoginFilter(authenticationManager(authenticationConfiguration));
-        loginFilter.setAuthenticationSuccessHandler(successHandler);
+        loginFilter.setAuthenticationSuccessHandler(customFormSuccessHandler);
         loginFilter.setAuthenticationFailureHandler(failureHandler);
 
+        // LoginFilter 추가
         http
                 .addFilterAt(loginFilter, UsernamePasswordAuthenticationFilter.class);
 
+        // 로그아웃 필터 추가
         http
                 .addFilterBefore(new CustomLogoutFilter(jwtUtil, refreshTokenService), LogoutFilter.class);
+
+        // 소셜로그인
+        http
+                .oauth2Login(((oAuth2) -> oAuth2
+                        .userInfoEndpoint(
+                                (userInfoEndpointConfig -> userInfoEndpointConfig
+                                        .userService(customOAuth2UserService)))
+                        .successHandler(customOAuth2SuccessHandler)
+                        .failureHandler(failureHandler)));
 
         // 세션 관리를 Stateless로 설정 (세션을 사용하지 않음). JWT는 세션 기반 인증을 사용하지 않으므로 이렇게 설정
         http
